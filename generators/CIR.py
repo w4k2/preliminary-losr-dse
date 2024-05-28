@@ -1,5 +1,6 @@
 import numpy as np
-
+# Class incremental with repetition
+ 
 class CIR_Stream:
     def __init__(self, X,y, n_experiences=10, min_classes=2, max_classes=0.5, chunk_size=200):
         self.X = X
@@ -35,7 +36,7 @@ class CIR_Stream:
         for __ue in _ue:
             not_in_ce.remove(__ue)
         
-        # dorzuć niewykorzystane klasy do losowych tasków
+        # Add the non-used classes into random tasks
         for missing in not_in_ce:
             rand_exp = np.random.randint(self.n_experiences)
             classes_in_experiences[rand_exp].append(missing)
@@ -46,7 +47,7 @@ class CIR_Stream:
         e = np.zeros((total_classes))
         e[_ue] = _ce
         
-        p = (p/e).astype(int) # Jak w experience pojawi się klasa to ile wylosować obiektów
+        p = (p/e).astype(int) # How many objects to select if class is present in an experience 
         
         # Experiences
         all_exp_indexes = []
@@ -64,7 +65,7 @@ class CIR_Stream:
                 self.mask_used[selection] = 1
                 exp_indexes.append(selection)
                 
-            # flatten in experience and shuffle
+            # Flatten in experience and shuffle
             exp_indexes_flat = np.array([item for row in exp_indexes for item in row])
             rand_perm = np.random.permutation(len(exp_indexes_flat))
 
@@ -75,7 +76,7 @@ class CIR_Stream:
         
         self.order = np.array([item for row in all_exp_indexes for item in row])
         
-    # build a stream from experiences
+    # Build a stream from experiences
     def get_chunk(self):
         if self.chunk > self.max_chunk:
             return 

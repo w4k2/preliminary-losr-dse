@@ -1,8 +1,9 @@
 import numpy as np
 
 np.random.seed(233)
+# New instances and classes
 
-class NIC_Stream:
+class NIC_Stream: 
     def __init__(self, X,y, n_experiences=10, chunk_size=200, min_classes=2):
         self.X = X
         self.y = y
@@ -25,21 +26,21 @@ class NIC_Stream:
         
         p = np.unique(self.y, return_counts=True)[1]
         
-        #niech najpierw każda klasa dostanie przypisanie exp
+        # Each class gets an experience assignment
         class_exp = np.random.choice(self.n_experiences, total_classes)
 
         while np.sum(class_exp==0) != self.min_classes:
-            # sprawdzić, czy się da
+            # Check if min classes possible
             if (total_classes<self.min_classes):
                 raise RuntimeError("min_classes greater than total_classes")
             
-            #za dużo czy za mało
+            # To many/Too little
             if np.sum(class_exp==0) < self.min_classes:
-                #wymusić minimum
+                # Force minimum
                 random_idx = np.random.choice(total_classes)
                 class_exp[random_idx]=0
             if np.sum(class_exp==0) > self.min_classes:
-                #usunąć nadmiar
+                # Reduce redundant
                 random_exp = np.random.choice(self.n_experiences)
                 first_idx = np.argwhere(class_exp==0).flatten()[0]
                 class_exp[first_idx]=random_exp
@@ -57,7 +58,7 @@ class NIC_Stream:
         e = np.zeros((total_classes))
         e[_ue] = _ce
         
-        p = (p/e).astype(int) # Jak w experience pojawi się klasa to ile wylosować obiektów
+        p = (p/e).astype(int) # How many objects to select if class is present in an experience 
         
         # Experiences
         all_exp_indexes = []
@@ -75,7 +76,7 @@ class NIC_Stream:
                 self.mask_used[selection] = 1
                 exp_indexes.append(selection)
                 
-            # flatten in experience and shuffle
+            # Flatten in experience and shuffle
             exp_indexes_flat = np.array([item for row in exp_indexes for item in row])
             rand_perm = np.random.permutation(len(exp_indexes_flat))
 
@@ -86,7 +87,7 @@ class NIC_Stream:
         
         self.order = np.array([item for row in all_exp_indexes for item in row])
         
-    # build a stream from experiences
+    # Build a stream from experiences
     def get_chunk(self):
         if self.chunk > self.max_chunk:
             return 
