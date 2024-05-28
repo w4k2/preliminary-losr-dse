@@ -160,7 +160,7 @@ for chunk in range(stream.max_chunk):
         aax.set_xlabel('chunk')
         
         plt.tight_layout()
-        plt.savefig('foo.png')
+        plt.savefig('nonstationary.png')
         # plt.savefig('mov/%04d.png' % (chunk-10))
 
         for aa in ax.ravel():
