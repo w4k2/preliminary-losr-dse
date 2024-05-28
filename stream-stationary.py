@@ -28,7 +28,7 @@ pred_class = []
 
 fig, ax = plt.subplots(2,3,figsize=(15,10))
 plt.suptitle('Stationary example | 2 known + 6 unknown | fit on 10 chunks')
-# 
+
 xmin, xmax = np.min(X[:,0]), np.max(X[:,0])
 ymin, ymax = np.min(X[:,1]), np.max(X[:,1])
 xx, yy = np.meshgrid(
@@ -41,7 +41,7 @@ for chunk in range(stream.max_chunk):
     _X, _y = stream.get_chunk()
     print(np.unique(_y, return_counts=True))
     
-    #train with 10 chunks
+    # Train with 10 chunks
     if chunk<10:
         __X.append(_X)
         __y.append(_y)
@@ -60,12 +60,10 @@ for chunk in range(stream.max_chunk):
         score_mesh = kde.score_samples(mesh)
         score_mesh = np.exp(score_mesh)
         
-        # oblicz próg w oparciu znanych
+        # Calculate threshold based on known samples
         pred_proba_known = kde.score_samples(__X[mask_known])
         pred_proba_known = np.exp(pred_proba_known)
         th = np.mean(pred_proba_known) - np.std(pred_proba_known)
-        print(th)
-        # exit()
                 
         clf.fit(__X[mask_known], __y[mask_known])
 
@@ -77,22 +75,19 @@ for chunk in range(stream.max_chunk):
         mask_known[_y == known_y[1]]=1
         
         
-        #classification (closed)
+        # Classification (closed)
         clf_preds = clf.predict(_X[mask_known])
         clf_preds_all = clf.predict(_X)
         c_bac.append(balanced_accuracy_score(_y[mask_known], clf_preds))
               
-        #open
+        # Recognition (open)
         pred_proba = kde.score_samples(_X)
         pred_proba = np.exp(pred_proba)
         
         pred_known = (pred_proba>th).astype(int)
-        print(np.unique(pred_known, return_counts=True))
-
-        # store samples
-        accumulated_samples.extend(_X)
+        o_bac.append(balanced_accuracy_score(mask_known, pred_known))
         
-        #known
+        # For vizualization -- integrate knowns and unknowns
         gt_class = np.full((_X.shape[0]), 0.2).astype(float)
         gt_class[_y == known_y[0]]=-1
         gt_class[_y == known_y[1]]=1
@@ -101,9 +96,6 @@ for chunk in range(stream.max_chunk):
         pred_class[pred_class==known_y[0]] = -1
         pred_class[pred_class==known_y[1]] = 1
         pred_class[pred_known==0] = 0.2
-                
-        o_bac.append(balanced_accuracy_score(mask_known, pred_known))
-        print(o_bac[-1])
                         
         _accumulated_samples = np.array(_X)
         _gt_class = gt_class
@@ -149,7 +141,6 @@ for chunk in range(stream.max_chunk):
         
         plt.tight_layout()
         plt.savefig('stationary.png')
-        # plt.savefig('mov/%04d.png' % (chunk-10))
 
         for aa in ax.ravel():
             aa.cla()
