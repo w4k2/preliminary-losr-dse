@@ -4,7 +4,7 @@ from generators.NIC import NIC_Stream
 import numpy as np
 from sklearn.metrics import balanced_accuracy_score
 import matplotlib.pyplot as plt
-from scipy.ndimage import median_filter
+from scipy.ndimage import median_filter, gaussian_filter
 from sklearn.neighbors import KernelDensity
 
 n_classes = 8
@@ -25,7 +25,7 @@ accumulated_samples = []
 gt_class = []
 pred_class = []
 
-fig, ax = plt.subplots(2,3,figsize=(15,10))
+fig, ax = plt.subplots(2,3,figsize=(11,7), dpi=300)
 plt.suptitle('Non-stationary example | 2 known + 6 unknown | fit on 10 chunks')
 
 xmin, xmax = np.min(X[:,0]), np.max(X[:,0])
@@ -36,6 +36,10 @@ xx, yy = np.meshgrid(
 )
 mesh = np.array([xx.flatten(), yy.flatten()]).T
 
+_accumulated_samples = []
+_gt_class = []
+_pred_class = []
+        
 for chunk in range(stream.max_chunk):
     _X, _y = stream.get_chunk()
     print(np.unique(_y, return_counts=True))
@@ -94,61 +98,70 @@ for chunk in range(stream.max_chunk):
         o_bac.append(balanced_accuracy_score(mask_known, pred_known))
         
         # For vizualization -- integrate knowns and unknowns
-        gt_class = np.full((_X.shape[0]), 0.2).astype(float)
+        gt_class = np.full((_X.shape[0]), 0).astype(float)
         gt_class[_y == known_y[0]]=-1
         gt_class[_y == known_y[1]]=1
         
         pred_class = np.copy(clf_preds_all).astype(float)
         pred_class[pred_class==known_y[0]] = -1
         pred_class[pred_class==known_y[1]] = 1
-        pred_class[pred_known==0] = 0.2
+        pred_class[pred_known==0] = 0
                         
-        _accumulated_samples = np.array(_X)
-        _gt_class = gt_class
-        _pred_class = pred_class
-
-        print(_accumulated_samples.shape)
-        print(_gt_class.shape)
-        print(_pred_class.shape)     
-
-        ax[0,0].scatter(_accumulated_samples[:,0], _accumulated_samples[:,1], alpha=0.95, s=10, c=_gt_class, cmap='coolwarm', marker='o')
-        ax[0,1].scatter(_accumulated_samples[:,0], _accumulated_samples[:,1], alpha=0.95, s=10, c=_pred_class, cmap='coolwarm', marker='o', )
-        ax[0,2].scatter(mesh[:,0], mesh[:,1], alpha=0.5, s=15, c=score_mesh, cmap='coolwarm')
-
-        ax[0,0].set_xlabel('$x_1$')
-        ax[0,0].set_ylabel('$x_2$')
-        ax[0,1].set_xlabel('$x_1$')
-        ax[0,2].set_xlabel('$x_1$')
+        # _accumulated_samples = np.array(_X)
+        # _gt_class = gt_class
+        # _pred_class = pred_class
         
-        aax = plt.subplot(2,1,2)
-        aax.plot(median_filter(o_bac,5, mode='nearest'), color='blue', label='Open (KDE)')
-        aax.plot(median_filter(c_bac,5, mode='nearest'), color='red', label='Closed (GNB)')
-        aax.set_xlim(0,stream.max_chunk-10)
-        aax.legend(frameon=False)
-        aax.grid(ls=':')
-        aax.set_ylabel('balanced accuracy')
-        aax.vlines((stream.max_chunk/2)-10, 0.5, 1, color='gray', ls=':')
-        aax.set_ylim(0.5,1)
+        _accumulated_samples.extend(_X)
+        _gt_class.extend(gt_class)
+        _pred_class.extend(pred_class)
+
+        print(len(_accumulated_samples))
+        print(len(_gt_class))
+        print(len(_pred_class))     
+
+_accumulated_samples = np.array(_accumulated_samples)
+_gt_class = np.array(_gt_class)
+_pred_class = np.array(_pred_class)
+
+ax[0,0].scatter(_accumulated_samples[:,0], _accumulated_samples[:,1], alpha=0.05, s=5, c=_gt_class, cmap='coolwarm', marker='o')
+ax[0,1].scatter(_accumulated_samples[:,0], _accumulated_samples[:,1], alpha=0.05, s=5, c=_pred_class, cmap='coolwarm', marker='o', )
+ax[0,2].scatter(mesh[:,0], mesh[:,1], alpha=0.5, s=5, c=score_mesh, cmap='coolwarm')
+
+ax[0,0].set_xlabel('$x_1$')
+ax[0,0].set_ylabel('$x_2$')
+ax[0,1].set_xlabel('$x_1$')
+ax[0,2].set_xlabel('$x_1$')
+
+aax = plt.subplot(2,1,2)
+aax.plot(gaussian_filter(o_bac, 1), color='blue', label='Open (KDE)')
+aax.plot(gaussian_filter(c_bac, 1), color='red', label='Closed (GNB)')
+aax.set_xlim(0,stream.max_chunk-10)
+aax.legend(frameon=False)
+aax.grid(ls=':')
+aax.set_ylabel('balanced accuracy')
+aax.vlines((stream.max_chunk/2)-10, 0.5, 1, color='gray', ls=':')
+aax.set_ylim(0.5,1)
+
+
+for aa in ax[0]:
+    aa.grid(ls=':')
+    aa.spines['top'].set_visible(False)
+    aa.spines['right'].set_visible(False)
+    aa.set_xlim(xmin,xmax)
+    aa.set_ylim(ymin,ymax)
+for aa in ax[1]:
+    aa.set_xticks([])
+    aa.set_yticks([])
     
+aax.spines['top'].set_visible(False)
+aax.spines['right'].set_visible(False)
+aax.set_xlabel('chunk')
 
-        for aa in ax[0]:
-            aa.grid(ls=':')
-            aa.spines['top'].set_visible(False)
-            aa.spines['right'].set_visible(False)
-            aa.set_xlim(xmin,xmax)
-            aa.set_ylim(ymin,ymax)
-        for aa in ax[1]:
-            aa.set_xticks([])
-            aa.set_yticks([])
-            
-        aax.spines['top'].set_visible(False)
-        aax.spines['right'].set_visible(False)
-        aax.set_xlabel('chunk')
-        
-        plt.tight_layout()
-        plt.savefig('nonstationary.png')
+plt.tight_layout()
+plt.savefig('nonstationary.png')
+# plt.savefig('nonstationary.eps')
 
-        for aa in ax.ravel():
-            aa.cla()
-            aax.cla()          
+for aa in ax.ravel():
+    aa.cla()
+    aax.cla()          
 
